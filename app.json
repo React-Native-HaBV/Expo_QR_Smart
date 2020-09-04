@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Expo_QRCode_Smart",
-    "slug": "Expo_QRCode_Smart",
+    "name": "QR - Smart",
+    "slug": "QR-Smart",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,10 +17,16 @@
       "**/*"
     ],
     "ios": {
+      "bundleIdentifier": "vn.habv.qrsmart",
+      "buildNumber": "1.0.0",
       "supportsTablet": true
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "android": {
+      "package": "vn.habv.qrsmart",
+    },
+    "platforms": [
+      "android",
+      "ios"
+    ]
   }
 }

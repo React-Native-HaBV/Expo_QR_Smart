@@ -12,6 +12,8 @@ import RNPickerSelect from 'react-native-picker-select';
 import QRCode from 'react-native-qrcode-svg';
 import {captureRef} from 'react-native-view-shot';
 import * as Permissions from 'expo-permissions';
+import {ConfirmModal} from "./Modal/ConfirmModal";
+import {SuccessModalTwo} from "./Modal/SuccessModalTwo";
 
 const Wifi = (props) => {
   const [SSID, setSSID] = useState('');
@@ -20,7 +22,12 @@ const Wifi = (props) => {
   const [encryption, setEncryption] = useState('');
   const inputRefs = useRef({encryption: null});
   const [QRValue, setQRValue] = useState('');
+  const [showModal, setShowModal] = useState(false);
   const viewRef = useRef();
+
+  const toogleModal = () => {
+    setShowModal(!showModal);
+  };
 
   useEffect(() => {
     setQRValue(`WIFI:T:${encryption};S:${SSID};P:${password};;`);
@@ -57,7 +64,8 @@ const Wifi = (props) => {
         if (result.activityType) {
           // shared with activity type of result.activityType
           if (result.activityType.search('SaveToCameraRoll')) {
-            alert('QRCode saved');
+            // alert('QRCode saved');
+            toogleModal();
           }
         } else {
           // shared
@@ -204,6 +212,12 @@ const Wifi = (props) => {
         </View>
       </View>
       </KeyboardAvoidingView>
+      <SuccessModalTwo
+        visible={showModal}
+        mainText={'QRCode saved'}
+        btnText={'OK'}
+        onBtnPress={toogleModal}
+      />
     </ScrollView>
   );
 };

@@ -12,13 +12,19 @@ import QRCode from 'react-native-qrcode-svg';
 import {captureRef} from 'react-native-view-shot';
 import * as Permissions from 'expo-permissions';
 import {saveToCameraRoll} from "@react-native-community/cameraroll";
+import {SuccessModalTwo} from "./Modal/SuccessModalTwo";
 
 const Contact = () => {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [QRValue, setQRValue] = useState('');
+  const [showModal, setShowModal] = useState(false);
   const viewRef = useRef();
+
+  const toogleModal = () => {
+    setShowModal(!showModal);
+  };
 
   useEffect(() => {
     setQRValue(`MECARD:N:${name};TEL:${phoneNumber};EMAIL:${email};`);
@@ -55,7 +61,8 @@ const Contact = () => {
         if (result.activityType) {
           // shared with activity type of result.activityType
           if (result.activityType.search('SaveToCameraRoll')) {
-            alert('QRCode saved');
+            // alert('QRCode saved');
+            toogleModal();
           }
         } else {
           // shared
@@ -63,7 +70,7 @@ const Contact = () => {
         }
       } else if (result.action === Share.dismissedAction) {
         // dismissed
-        alert('QR Code is not shared')
+        // alert('QR Code is not shared')
       }
     } catch (error) {
       console.log('error', error.message);
@@ -149,6 +156,12 @@ const Contact = () => {
         </View>
       </View>
       </KeyboardAvoidingView>
+      <SuccessModalTwo
+        visible={showModal}
+        mainText={'QRCode saved'}
+        btnText={'OK'}
+        onBtnPress={toogleModal}
+      />
     </ScrollView>
   );
 };
