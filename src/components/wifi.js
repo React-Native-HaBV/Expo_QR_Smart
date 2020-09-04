@@ -1,22 +1,19 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   StyleSheet,
   Text,
   Platform,
-  TouchableOpacity,
   KeyboardAvoidingView,
-  Alert, Image, PermissionsAndroid
+  Alert, ScrollView, Share, Image
 } from 'react-native';
 import {Input, Icon, Button} from 'react-native-elements';
 import RNPickerSelect from 'react-native-picker-select';
 import QRCode from 'react-native-qrcode-svg';
-import {captureRef, captureScreen} from 'react-native-view-shot';
-import CameraRoll from '@react-native-community/cameraroll';
+import {captureRef} from 'react-native-view-shot';
 import * as Permissions from 'expo-permissions';
-import * as MediaLibrary from 'expo-media-library';
 
-const Wifi = () => {
+const Wifi = (props) => {
   const [SSID, setSSID] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(true);
@@ -24,13 +21,10 @@ const Wifi = () => {
   const inputRefs = useRef({encryption: null});
   const [QRValue, setQRValue] = useState('');
   const viewRef = useRef();
-  const [URL, setURL] = useState('');
-  const [saving, setSaving] = useState(false);
 
-  const handleButtonPress = () => {
+  useEffect(() => {
     setQRValue(`WIFI:T:${encryption};S:${SSID};P:${password};;`);
-    console.log(SSID + ' - ' + password + ' - ' + encryption);
-  };
+  }, [SSID, password, encryption])
 
   // get permission Camera Roll
   const cameraRollPermission = async () => {
@@ -43,252 +37,219 @@ const Wifi = () => {
     }
     return cameraRollPermission;
   };
-
-  // get permission on android
-  const getPermissionAndroid = async () => {
-    try {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: 'Image Download Permission',
-          message: 'Your permission is required to save images to your device',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        },
-      );
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-        return true;
-      }
-      Alert.alert(
-        '',
-        'Your permission is required to save images to your device',
-        [{text: 'OK', onPress: () => {}}],
-        {cancelable: false},
-      );
-    } catch (err) {
-      // handle error as you please
-      console.log('err', err);
-    }
-  };
-// download image
-  const downloadImage = async () => {
+  // share QR code image
+  const shareQRcodeImage = async () => {
     await cameraRollPermission();
     try {
       // react-native-view-shot caputures component
       const uri = await captureRef(viewRef, {
         format: 'png',
-        quality: 0.8,
+        quality: 1,
       });
-
-      if (Platform.OS === 'android') {
-        const granted = await getPermissionAndroid();
-        if (!granted) {
-          return;
-        }
-      }
-
       // cameraroll saves image
-      const result = MediaLibrary.saveToLibraryAsync(uri);
-      if (result) {
-        Alert.alert(
-          '',
-          'Image saved successfully.',
-          [{text: 'OK', onPress: () => {}}],
-          {cancelable: false},
-        );
+      const shareOptions = {
+        title: 'Share QR code Wifi',
+        message: <Image source={{uri: uri}} style={{width: 350, height: 350}}/>,
+        url: uri,
+      };
+      const result = await Share.share(shareOptions);
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // shared with activity type of result.activityType
+          if (result.activityType.search('SaveToCameraRoll')) {
+            alert('QRCode saved');
+          }
+        } else {
+          // shared
+          // alert('QR Code shared');
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // dismissed
+        // alert('Share cancelled');
       }
+      // }
     } catch (error) {
-      console.log('error', error);
+      console.log('error', error.message);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.titleContainer}>
-        <Text> Create QR Code Wifi Information</Text>
-      </View>
-      <View style={styles.inputContainer}>
-        <KeyboardAvoidingView
-          style={styles.inputContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
-          enabled={Platform.OS === 'ios' ? true : false}
-          keyboardVerticalOffset={Platform.select({ios: 0, android: 200})}
-        >
-          <Input
-            label={'Network Name'}
-            placeholder={'Network Name'}
-            leftIcon={{name: 'wifi', type: 'font-awesome', color: 'gray', size: 24}}
-            onChangeText={(SSID) => setSSID(SSID)}
-            value={SSID}
-            inputStyle={{marginLeft: 10}}
-            autoCorrect={false}
-            autoCapitalize={"none"}
-            disableFullscreenUI={true}
+    <ScrollView style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'position' : 'position'}
+        enabled={Platform.OS === 'ios' ? true : true}
+        keyboardVerticalOffset={Platform.select({ios: 20, android: 70})}
+      >
+      <View style={styles.container}>
+        <View style={[styles.viewQRContainer, styles.shadowStyle]} ref={viewRef}>
+          <QRCode
+            value={QRValue.length > 0 ? QRValue : 'HaBV'}
+            size={280}
+            color={'#1EC8BE'}
+            backgroundColor={'transparent'}
+            quietZone={10}
           />
-          <Input
-            label={'Password'}
-            placeholder={'Password'}
-            leftIcon={{name: 'key', type: 'font-awesome', color: 'gray', size: 24}}
-            onChangeText={(password) => setPassword(password)}
-            value={password}
-            inputStyle={{marginLeft: 10}}
-            autoCorrect={false}
-            autoCapitalize={"none"}
-            secureTextEntry={showPassword}
-            rightIcon={
+        </View>
+        <View style={styles.titleContainer}>
+          <Text style={styles.titleStyle}> Create QR Code Wifi Information</Text>
+        </View>
+        <View style={[styles.inputContainer, styles.shadowStyle]}>
+            <Input
+              // label={'Network Name'}
+              placeholder={'Network Name'}
+              leftIcon={{name: 'wifi', type: 'font-awesome', color: '#1EC8BE', size: 24}}
+              onChangeText={(SSID) => setSSID(SSID)}
+              value={SSID}
+              inputStyle={{marginLeft: 10, fontSize: 16}}
+              inputContainerStyle={{borderBottomWidth: 0.5}}
+              containerStyle={{ paddingTop: 10}}
+              autoCorrect={false}
+              autoCapitalize={"none"}
+            />
+            <Input
+              // label={'Password'}
+              placeholder={'Password'}
+              leftIcon={{name: 'key', type: 'font-awesome', color: '#1EC8BE', size: 24}}
+              onChangeText={(password) => setPassword(password)}
+              value={password}
+              inputStyle={{marginLeft: 10, fontSize: 16}}
+              inputContainerStyle={{borderBottomWidth: 0.5}}
+              containerStyle={{marginTop: -20}}
+              autoCorrect={false}
+              autoCapitalize={"none"}
+              secureTextEntry={showPassword}
+              rightIcon={
+                <Button
+                  iconContainerStyle={{
+                    justifyContent: 'flex-end'
+                  }}
+                  buttonStyle={{
+                    backgroundColor: 'transparent',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => setShowPassword(!showPassword)}
+                  icon={{
+                    name: showPassword ? 'eye-slash' : 'eye',
+                    size: 22,
+                    type: 'font-awesome',
+                    color: showPassword ? 'gray' : '#1EC8BE'
+                  }}
+                />
+              }
+              rightIconContainerStyle={{
+                marginRight: -15
+              }}
+            />
+            <View style={styles.selectContainer}>
+              <Text style={styles.formLabel}> Select encryption your wifi network: </Text>
+              <RNPickerSelect
+                style={{
+                  inputIOSContainer: styles.inputIOS,
+                  inputAndroidContainer: styles.inputAndroid,
+                  viewContainer: {
+                    justifyContent: 'center',
+                    marginVertical: 10,
+                    alignContent: 'center',
+                  },
+                  iconContainer: {
+                    marginRight: 10,
+                  },
+                  placeholder: {
+                    // color: '#1EC8BE',
+                  },
+                  inputIOS: {color: '#1EC8BE'},
+                  inputAndroid: {color: '#1EC8BE'},
+                }}
+                placeholder={{
+                  label: 'Select encryption',
+                  value: null,
+                  color: '#A0A0A0',
+                }}
+                value={encryption}
+                useNativeAndroidPickerStyle={Platform.OS === 'ios' ? true : false} //android only
+                Icon={() => {
+                  return (
+                    <Icon
+                      name={'md-arrow-down'}
+                      type={'ionicon'}
+                      size={24}
+                      color={'gray'}
+                    />
+                  );
+                }}
+                items={[
+                  {label: 'None', value: 'None'},
+                  {label: 'WPA/WPA2', value: 'WPA'},
+                  {label: 'WEP', value: 'WEP'},
+                ]}
+                onValueChange={(value) => setEncryption(value)}
+              />
+            </View>
+            <View style={styles.buttonContainer}>
               <Button
-                iconContainerStyle={{
-                  paddingHorizontal: 10,
+                title={'Share QR Code'}
+                containerStyle={{
+                  borderRadius: 10,
                 }}
                 buttonStyle={{
-                  backgroundColor: 'transparent',
-                  justifyContent: 'center',
+                  backgroundColor: '#1EC8BE'
                 }}
-                onPress={() => setShowPassword(!showPassword)}
-                icon={{
-                  name: showPassword ? 'eye-slash' : 'eye',
-                  size: 24,
-                  type: 'font-awesome',
-                  color: showPassword ? 'gray' : 'black'
+                onPress={() => {
+                  shareQRcodeImage();
                 }}
               />
-            }
-          />
-        </KeyboardAvoidingView>
-      </View>
-      <View style={styles.selectContainer}>
-        <Text style={styles.formLabel}> Select encryption your wifi network: </Text>
-        <RNPickerSelect
-          style={{
-            inputIOSContainer: styles.inputIOS,
-            inputAndroidContainer: styles.inputAndroid,
-            viewContainer: {
-              justifyContent: 'center',
-              marginVertical: 10,
-              alignContent: 'center',
-            },
-            iconContainer: {
-              marginRight: 10,
-            },
-          }}
-          placeholder={{
-            label: 'Select encryption',
-            value: null,
-            color: '#9EA0A4',
-          }}
-          value={encryption}
-          useNativeAndroidPickerStyle={Platform.OS === 'ios' ? true : false} //android only
-          Icon={() => {
-            return (
-              <Icon
-                name={'md-arrow-down'}
-                type={'ionicon'}
-                size={24}
-                color={'gray'}
-              />
-            );
-          }}
-          onUpArrow={() => {
-            inputRefs.encryption.focus();
-          }}
-          onDownArrow={() => {
-            inputRefs.encryption.togglePicker();
-          }}
-          items={[
-            {label: 'None', value: 'None'},
-            {label: 'WPA/WPA2', value: 'WPA'},
-            {label: 'WEP', value: 'WEP'},
-          ]}
-          onValueChange={(value) => setEncryption(value)}
-        />
-      </View>
-      <View style={styles.buttonContainer}>
-        <Button
-          title={'QR Code Generator'}
-          containerStyle={{
-            marginTop: Platform.OS === 'ios' ? 20 : 10,
-            marginHorizontal: 10,
-            borderRadius: 8,
-          }}
-          buttonStyle={{
-            backgroundColor: '#512DA8'
-          }}
-          color={Platform.OS === 'ios' ? 'white' : '#512DA8'}
-          onPress={() => {
-            handleButtonPress();
-          }}
-        />
-      </View>
-      <View style={styles.viewContainer}>
-        <View style={styles.qrcodeContainer} ref={viewRef}>
-          <TouchableOpacity onPress={downloadImage}>
-            {
-              QRValue ?
-                <QRCode
-                  value={QRValue.length > 0 ? QRValue : 'HaBV'}
-                  size={Platform.OS === 'ios' ? 280 : 230}
-                  color={'black'}
-                  backgroundColor={'white'}
-                />
-                : <View/>
-            }
-          </TouchableOpacity>
+            </View>
+
         </View>
-        <Text style={{fontSize: Platform.OS === 'ios' ? 18 : 16, marginLeft: 20}}>
-          {'SSID: ' + SSID + '\n' +
-          'Password: ' + password + '\n' +
-          'Encryption: ' + encryption}
-        </Text>
       </View>
-    </View>
+      </KeyboardAvoidingView>
+    </ScrollView>
   );
 };
 const styles = StyleSheet.create({
   container: {
-    flex: 1
+    flex: 1,
+    backgroundColor: '#C8C8C8',
   },
   titleContainer: {
-    flex: 0.5,
-    // backgroundColor: 'gray',
+    marginVertical: 10,
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  titleStyle: {
+    color: '#A0A0A0'
   },
   inputContainer: {
-    flex: Platform.OS === 'ios' ? 2 : 2.5,
-    marginHorizontal: 10,
-    // backgroundColor: 'green'
+    marginHorizontal: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    paddingBottom: 20
   },
   selectContainer: {
-    flex: 1,
-    // backgroundColor: 'blue',
     justifyContent: 'space-around',
-    marginHorizontal: 10,
+    marginTop: -10
   },
   buttonContainer: {
-    flex: 1,
-    marginHorizontal: 20
-    // backgroundColor: 'gray'
+    marginHorizontal: 10,
+    paddingTop: 10
   },
-  viewContainer: {
-    flex: Platform.OS === 'ios' ? 4.5 : 4,
-    // justifyContent: 'center',
-    // alignItems: 'center',
-    backgroundColor: 'tomato'
-  },
-  qrcodeContainer: {
-    flex: 5,
-    alignContent: 'center',
-    justifyContent: 'center',
-    alignItems: 'center'
+  viewQRContainer: {
+    marginTop: 10,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    alignSelf: 'center',
+    alignItems: 'center',
   },
   formLabel: {
-    marginLeft: 15
+    marginLeft: 10,
+    color: '#A0A0A0'
   },
   inputIOS: {
-    marginHorizontal: 17,
+    marginHorizontal: 10,
     paddingVertical: 7,
     paddingRight: 25,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: 'gray',
     borderRadius: 8,
     justifyContent: 'center',
@@ -298,9 +259,9 @@ const styles = StyleSheet.create({
   },
   inputAndroid: {
     marginVertical: 7,
-    marginHorizontal: 17,
+    marginHorizontal: 10,
     paddingRight: 25,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: 'gray',
     borderRadius: 8,
     justifyContent: 'center',
@@ -308,5 +269,15 @@ const styles = StyleSheet.create({
     color: 'black',
     paddingLeft: 30, // to ensure the text is never behind the icon
   },
+  shadowStyle: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    shadowOpacity: 0.35,
+    shadowRadius: 6.5,
+    elevation: 10,
+  }
 });
 export default Wifi;
